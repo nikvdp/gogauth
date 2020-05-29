@@ -11,17 +11,20 @@ import (
 	"github.com/pquerna/otp/totp"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/scrypt"
+	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
+	"syscall"
 	"text/tabwriter"
 	"time"
 )
 
 var (
-	pw = os.Getenv("DECRYPT_PASSWORD")
+	pw string
 
 	keyCleanRegex, _ = regexp.Compile("[ -]+")
 
@@ -32,15 +35,15 @@ var (
 		Short: "google auth compatible cli",
 		Long:  "google auth compatible cli tool",
 		Run: func(cmd *cobra.Command, args []string) {
-			decryptAndDisplayCodes()
+			cmd.Help()
 		},
 	}
 )
 
-func main() {
+func runCliParser() {
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "list",
-		Short: "show codes",
+		Short: "show codes for all stored totp keys",
 		Run: func(cmd *cobra.Command, args []string) {
 			decryptAndDisplayCodes()
 		},
@@ -48,7 +51,7 @@ func main() {
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "add",
-		Short: "add a new code",
+		Short: "add a new totp key",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			// fmt.Println("Add a key")
@@ -58,24 +61,36 @@ func main() {
 	})
 
 	rootCmd.AddCommand(&cobra.Command{
-		Use:   "test",
-		Short: "test encryption",
+		Use:   "rm",
+		Short: "remove a totp key",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			var buff bytes.Buffer
-			fmt.Println("Going to attempt to encrypt the following:")
-			fmt.Println("---")
-			fmt.Println(args[0])
-			fmt.Println("---")
-
-			buff.WriteString(args[0])
-			// cfg := sio.Config(Key: )
-
+			removeKey(args[0])
 		},
 	})
 
 	rootCmd.Execute()
-	// displayDecryptedKeys()
+}
+
+func getPassword() string {
+	// TODO: refactor, this approach is clunky
+	if pw != "" {
+		return pw
+	}
+
+	password := os.Getenv("GOGAUTH_PASSWORD")
+
+	if password == "" {
+		fmt.Print("Enter decryption password: ")
+		passwordBytes, _ := terminal.ReadPassword(int(syscall.Stdin))
+		password = string(passwordBytes)
+		fmt.Print("\n")
+	}
+	pw = password
+	return password
+}
+func main() {
+	runCliParser()
 }
 
 func findTotpKeyFile() string {
@@ -100,7 +115,7 @@ func addKey(name string, totp string) {
 	totpClean := cleanTotpKey(totp)
 	totpKeys, err := doDecrypt()
 	if err != nil {
-		totpKeys = make(map[string]string)
+		fmt.Println("Decryption error!")
 	}
 
 	if !verifyTotpIsValid(totpClean) {
@@ -115,18 +130,44 @@ func addKey(name string, totp string) {
 		fmt.Printf("Unable to encrypt! Error: %s", err)
 	}
 
-	// fmt.Printf("Added key '%s' with code '%s' to db!", name, totpClean)
-	// fmt.Println("New json: ")
-	// fmt.Println(string(jsoned))
+	fmt.Printf("Added key '%s' with code '%s' to db!\n", name, totpClean)
+}
+
+func removeKey(name string) {
+	totpKeys, err := doDecrypt()
+	if err != nil {
+		fmt.Println("Decryption error!")
+	}
+	delete(totpKeys, name)
+
+	_, err = doEncrypt(totpKeys)
+	if err != nil {
+		fmt.Printf("Failed to encrypt! Error: %s", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Removed key '%s'!\n", name)
 }
 
 func decryptAndDisplayCodes() {
 	decryptedKeys, _ := doDecrypt()
 	decrypted := cleanTotpKeys(decryptedKeys)
 	writer := tabwriter.NewWriter(os.Stdout, 2, 1, 3, ' ', 0)
+
+	codes := make(map[string]string)
+
+	keys := make([]string, 0, len(decrypted)) // to sort on
+
 	for key, val := range decrypted {
+		keys = append(keys, key)
 		code, _ := totp.GenerateCode(val, time.Now())
-		fmt.Fprintf(writer, "%s\t%s\n", key, code)
+		codes[key] = code
+	}
+	sort.Strings(keys)
+
+	// print out keys in columnar form in alphabetic order
+	for _, k := range keys {
+		fmt.Fprintf(writer, "%s\t%s\n", k, codes[k])
 	}
 	writer.Flush()
 }
@@ -147,7 +188,7 @@ func doDecrypt() (map[string]string, error) {
 	}
 	defer origInFile.Close()
 
-	sioConfig, _ := buildSioConfig(pw, salt)
+	sioConfig, _ := buildSioConfig(getPassword(), salt)
 
 	var buff bytes.Buffer
 	decrypted := bufio.NewWriter(&buff)
@@ -181,6 +222,7 @@ func buildSioConfig(pw string, salt []byte) (sio.Config, error) {
 
 func doEncrypt(totpKeys map[string]string) (int64, error) {
 	/** WARNING: This *overwrites* `totpKeyFile!` **/
+
 	salt := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to generate random salt!\n")
@@ -189,11 +231,8 @@ func doEncrypt(totpKeys map[string]string) (int64, error) {
 
 	// TODO: pick up from here, verify that you can encrypt
 	jsonTotpKeys, _ := json.Marshal(totpKeys)
-	fmt.Println("Salt is: ", salt)
-	fmt.Println("Json totp keys: ", string(jsonTotpKeys))
-	fmt.Println("---")
 
-	sioConfig, err := buildSioConfig(pw, salt)
+	sioConfig, err := buildSioConfig(getPassword(), salt)
 	if err != nil {
 		fmt.Println("sio config error!", err)
 		return 0, err
@@ -201,20 +240,18 @@ func doEncrypt(totpKeys map[string]string) (int64, error) {
 
 	outfileHandle, err := os.Create(totpKeyFile)
 	if err != nil {
-		fmt.Println("What the fuck mang, fcreate error", err)
+		fmt.Println("Error creating totp file!", err)
 	}
 	outFile := base64.NewEncoder(base64.StdEncoding, outfileHandle)
 
 	outFile.Write(salt)
-	// bytesWritten, err := sio.Encrypt(outFile, strings.NewReader(string(jsonTotpKeys)), sioConfig)
-	// toEncrypt := fmt.Sprintf("hello there my friend: %s", time.Now())
+
 	toEncrypt := string(jsonTotpKeys)
-	fmt.Println("Trying to encrypt ", toEncrypt)
+
 	bytesWritten, err := sio.Encrypt(outFile, strings.NewReader(toEncrypt), sioConfig)
 	if err != nil {
 		fmt.Println("Sio cmae back with error: ", err)
 	}
-	fmt.Printf("Wrote %d bytes\n", bytesWritten)
 
 	outFile.Close()
 	outfileHandle.Close()
