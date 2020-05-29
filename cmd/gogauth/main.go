@@ -38,7 +38,8 @@ var (
 		Short: "google auth compatible cli",
 		Long:  "google auth compatible cli tool",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("No command specified, running `gogauth list`. Run `gogauth help` for usage\n")
+			fmt.Fprintf(os.Stderr,
+				"No command specified, running `gogauth list`. Run `gogauth help` for usage\n")
 			decryptAndDisplayCodes()
 		},
 	}
@@ -50,7 +51,7 @@ func runCliParser() {
 		Use:   "list",
 		Short: "Show codes for all stored totp keys",
 		Run: func(cmd *cobra.Command, args []string) {
-			decryptAndDisplayCodes()
+			decryptAndDisplayCodes(args...)
 		},
 	})
 
@@ -182,7 +183,18 @@ func removeKey(name string) {
 	fmt.Printf("Removed key '%s'!\n", name)
 }
 
-func decryptAndDisplayCodes() {
+func grepFilter(array []string, filter string) []string {
+	var output []string
+	for _, str := range array {
+		if strings.Contains(str, filter) {
+			output = append(output, str)
+		}
+	}
+	return output
+}
+
+func decryptAndDisplayCodes(filters ...string) {
+
 	decryptedKeys, err := doDecrypt()
 	if err != nil {
 		msg := fmt.Sprintf(
@@ -192,22 +204,43 @@ func decryptAndDisplayCodes() {
 		fmt.Fprintln(os.Stderr, msg)
 	}
 	decrypted := cleanTotpKeys(decryptedKeys)
-	writer := tabwriter.NewWriter(os.Stdout, 2, 1, 3, ' ', 0)
 
 	codes := make(map[string]string)
 
 	keys := make([]string, 0, len(decrypted)) // to sort on
 
 	for key, val := range decrypted {
-		keys = append(keys, key)
 		code, _ := totp.GenerateCode(val, time.Now())
 		codes[key] = code
+		keys = append(keys, key)
+	}
+	for _, filter := range filters {
+		for key := range codes {
+			if !strings.Contains(key, filter) {
+				delete(codes, key)
+			}
+		}
+	}
+
+	keys = make([]string, 0, len(codes)) // to sort on
+	for key := range codes {
+		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 
 	// print out keys in columnar form in alphabetic order
-	for _, k := range keys {
-		fmt.Fprintf(writer, "%s\t%s\n", k, codes[k])
+	writer := tabwriter.NewWriter(os.Stdout, 2, 1, 3, ' ', 0)
+	if len(keys) > 1 {
+		for _, key := range keys {
+			fmt.Fprintf(writer, "%s\t%s\n", key, codes[key])
+		}
+	} else {
+		// if we only have one result, fancily print the name to stderr, but
+		// print the code to stdout. This allows piping to to e.g.
+		// `pbcopy`/`xsel` to only copy the code. e.g.: `gogauth list gmail |
+		// pbcopy`
+		fmt.Fprintf(os.Stderr, "%s\t", keys[0])
+		fmt.Printf(codes[keys[0]])
 	}
 	writer.Flush()
 }
