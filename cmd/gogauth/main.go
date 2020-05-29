@@ -39,7 +39,7 @@ var (
 		Long:  "google auth compatible cli tool",
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(os.Stderr,
-				"No command specified, running `gogauth list`. Run `gogauth help` for usage\n")
+				"No command specified, running `gogauth list`. Run `gogauth help` for usage.\n")
 			decryptAndDisplayCodes()
 		},
 	}
@@ -86,7 +86,7 @@ func getPassword() string {
 	password := os.Getenv("GOGAUTH_PASSWORD")
 
 	if password == "" {
-		fmt.Print("Enter decryption password: ")
+		fmt.Fprint(os.Stderr, "Enter decryption password: ")
 		passwordBytes, _ := terminal.ReadPassword(int(syscall.Stdin))
 		password = string(passwordBytes)
 		fmt.Print("\n")
@@ -234,7 +234,7 @@ func decryptAndDisplayCodes(filters ...string) {
 		for _, key := range keys {
 			fmt.Fprintf(writer, "%s\t%s\n", key, codes[key])
 		}
-	} else {
+	} else if len(keys) > 0 {
 		// if we only have one result, fancily print the name to stderr, but
 		// print the code to stdout. This allows piping to to e.g.
 		// `pbcopy`/`xsel` to only copy the code. e.g.: `gogauth list gmail |
