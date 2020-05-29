@@ -42,6 +42,7 @@ var (
 
 func runCliParser() {
 	rootCmd.AddCommand(&cobra.Command{
+		// TODO: add an 'ls' alias
 		Use:   "list",
 		Short: "show codes for all stored totp keys",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -61,6 +62,7 @@ func runCliParser() {
 	})
 
 	rootCmd.AddCommand(&cobra.Command{
+		// TODO: add a 'remove' alias
 		Use:   "rm",
 		Short: "remove a totp key",
 		Args:  cobra.MinimumNArgs(1),
@@ -115,7 +117,8 @@ func addKey(name string, totp string) {
 	totpClean := cleanTotpKey(totp)
 	totpKeys, err := doDecrypt()
 	if err != nil {
-		fmt.Println("Decryption error!")
+		fmt.Println("No totp key db found! Creating...")
+		totpKeys = make(map[string]string)
 	}
 
 	if !verifyTotpIsValid(totpClean) {
@@ -124,7 +127,6 @@ func addKey(name string, totp string) {
 	}
 
 	totpKeys[name] = totpClean
-	// jsoned, _ := json.MarshalIndent(totpKeys, "", "    ")
 
 	if _, err := doEncrypt(totpKeys); err != nil {
 		fmt.Printf("Unable to encrypt! Error: %s", err)
@@ -212,8 +214,8 @@ func buildSioConfig(pw string, salt []byte) (sio.Config, error) {
 		fmt.Fprintf(os.Stderr, "Key error: %s", err)
 	}
 	config := sio.Config{
-		Key: key,
-		// CipherSuites: []byte{sio.AES_256_GCM},
+		Key:          key,
+		CipherSuites: []byte{sio.CHACHA20_POLY1305},
 		// MinVersion:   sio.Version20,
 		// MaxVersion:   sio.Version20,
 	}
