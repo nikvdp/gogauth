@@ -10,6 +10,7 @@ You probably don't. But on the off chance that you're like me, this is a handy w
 
 ## Quickstart
 
+- Download from the [releases](https://github.com/nikvdp/gogauth/releases) page, and if on *nix run `chmod +x <bin-name>`, then put the file on your path. `/usr/local/bin` is a good choice.
 - Enable 2FA on your favorite website, and get the secret. Choose an option like "I can't read QR codes" to get the text secret, which should be a string of letters (e.g. `WIAT 3ZBH GTGV CWKF`)
 - Type `gogauth add <website-name> <secret>` to create a db+password and add this code
 - When you need a code to login to a website, run `gogauth` and re-enter your password.
