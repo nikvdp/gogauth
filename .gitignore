@@ -1,2 +1,4 @@
 go.sum
 auth_keys.json.ncrypt
+
+dist/
