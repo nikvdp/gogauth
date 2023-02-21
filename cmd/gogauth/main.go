@@ -193,7 +193,7 @@ func grepFilter(array []string, filter string) []string {
 	return output
 }
 
-func decryptAndDisplayCodes(filters ...string) {
+func decryptCodes(filters ...string) (codes map[string]string, keys []string ){
 	decryptedKeys, err := doDecrypt()
 	if err != nil {
 		msg := fmt.Sprintf(
@@ -204,9 +204,9 @@ func decryptAndDisplayCodes(filters ...string) {
 	}
 	decrypted := cleanTotpKeys(decryptedKeys)
 
-	codes := make(map[string]string)
+	codes = make(map[string]string)
 
-	keys := make([]string, 0, len(decrypted)) // to sort on
+	keys = make([]string, 0, len(decrypted)) // to sort on
 
 	for key, val := range decrypted {
 		code, _ := totp.GenerateCode(val, time.Now())
@@ -225,6 +225,11 @@ func decryptAndDisplayCodes(filters ...string) {
     for key := range codes {
         keys = append(keys, key)
     }
+    return codes, keys
+}
+
+func decryptAndDisplayCodes(filters ...string) {
+    codes, keys := decryptCodes(filters...)
     displayCodes(codes, keys)
 }
 
