@@ -8,7 +8,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.design/x/clipboard v0.6.3
-	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
+	golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
 )
 
 // replace  bitbucket.org/nikvdp/sia-ncrypt => github.com/minio/sio v0.2.0
