@@ -7,10 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/atotto/clipboard"
 	"github.com/minio/sio"
 	"github.com/pquerna/otp/totp"
 	"github.com/spf13/cobra"
-	"golang.design/x/clipboard"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
@@ -254,7 +254,7 @@ func copyCodeToClipboard(filters ...string) {
 		os.Exit(1)
 	}
 	code := codes[keys[0]]
-	clipboard.Write(clipboard.FmtText, []byte(code))
+	clipboard.WriteAll(code)
 	fmt.Fprintf(os.Stderr, "Copied code '%s' for '%s' to clipboard\n", code, keys[0])
 }
 
