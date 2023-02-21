@@ -24,6 +24,10 @@ You probably don't. But on the off chance that you're like me, this is a handy w
 - Codes are encrypted at rest at all times via [minio/sio](https://github.com/minio/sio), but can be easily decrypted if you want to move to another 2FA solution
 - Password and db location can be customized via command line switches or env vars if you don't want to type them in.
 
+## Build 
+- `go mod tidy`
+- `go build -o gogauth cmd/gogauth/main.go`
+
 ## Usage
 
 ```
@@ -34,7 +38,7 @@ Usage:
   gogauth [command]
 
 Available Commands:
-  add         Add a new totp key
+  add         <name> <totp> - Add a new totp key
   help        Help about any command
   list        Show codes for all stored totp keys
   rm          Remove a totp key
