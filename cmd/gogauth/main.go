@@ -10,6 +10,7 @@ import (
 	"github.com/minio/sio"
 	"github.com/pquerna/otp/totp"
 	"github.com/spf13/cobra"
+	"golang.design/x/clipboard"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
@@ -57,10 +58,19 @@ func runCliParser() {
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "add",
-        Short: "Add a new totp key. Args: (name, totp)",
+		Short: "Add a new totp key. Args: (name, totp)",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			addKey(args[0], args[1])
+		},
+	})
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "copy",
+		Short: "Copy an auth code to the clipboard. Args: (name)",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			copyCodeToClipboard(args[0])
 		},
 	})
 
@@ -193,7 +203,7 @@ func grepFilter(array []string, filter string) []string {
 	return output
 }
 
-func decryptCodes(filters ...string) (codes map[string]string, keys []string ){
+func decryptCodes(filters ...string) (codes map[string]string, keys []string) {
 	decryptedKeys, err := doDecrypt()
 	if err != nil {
 		msg := fmt.Sprintf(
@@ -221,16 +231,31 @@ func decryptCodes(filters ...string) (codes map[string]string, keys []string ){
 		}
 	}
 
-    keys = make([]string, 0, len(codes)) // to sort on
-    for key := range codes {
-        keys = append(keys, key)
-    }
-    return codes, keys
+	keys = make([]string, 0, len(codes)) // to sort on
+	for key := range codes {
+		keys = append(keys, key)
+	}
+	return codes, keys
 }
 
 func decryptAndDisplayCodes(filters ...string) {
-    codes, keys := decryptCodes(filters...)
-    displayCodes(codes, keys)
+	codes, keys := decryptCodes(filters...)
+	displayCodes(codes, keys)
+}
+
+func copyCodeToClipboard(filters ...string) {
+	codes, keys := decryptCodes(filters...)
+	if len(codes) == 0 {
+		fmt.Fprintln(os.Stderr, "No keys found")
+		os.Exit(1)
+	}
+	if len(codes) > 1 {
+		fmt.Fprintln(os.Stderr, "More than one key found, not copying any keys!")
+		os.Exit(1)
+	}
+	code := codes[keys[0]]
+	clipboard.Write(clipboard.FmtText, []byte(code))
+	fmt.Fprintf(os.Stderr, "Copied code '%s' for '%s' to clipboard\n", code, keys[0])
 }
 
 func displayCodes(codes map[string]string, keys []string) {
@@ -249,7 +274,7 @@ func displayCodes(codes map[string]string, keys []string) {
 		// pbcopy`
 		fmt.Fprintf(os.Stderr, "%s\t", keys[0])
 		fmt.Printf(codes[keys[0]])
-        fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "\n")
 	}
 	writer.Flush()
 }

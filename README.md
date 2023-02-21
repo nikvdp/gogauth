@@ -39,6 +39,7 @@ Usage:
 
 Available Commands:
   add         <name> <totp> - Add a new totp key
+  copy        Copy an auth code to the clipboard. Args: (name)
   help        Help about any command
   list        Show codes for all stored totp keys
   rm          Remove a totp key
