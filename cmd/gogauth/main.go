@@ -57,7 +57,7 @@ func runCliParser() {
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "add",
-		Short: "Add a new totp key",
+        Short: "Add a new totp key. Args: (name, totp)",
 		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			addKey(args[0], args[1])
@@ -194,7 +194,6 @@ func grepFilter(array []string, filter string) []string {
 }
 
 func decryptAndDisplayCodes(filters ...string) {
-
 	decryptedKeys, err := doDecrypt()
 	if err != nil {
 		msg := fmt.Sprintf(
@@ -222,10 +221,14 @@ func decryptAndDisplayCodes(filters ...string) {
 		}
 	}
 
-	keys = make([]string, 0, len(codes)) // to sort on
-	for key := range codes {
-		keys = append(keys, key)
-	}
+    keys = make([]string, 0, len(codes)) // to sort on
+    for key := range codes {
+        keys = append(keys, key)
+    }
+    displayCodes(codes, keys)
+}
+
+func displayCodes(codes map[string]string, keys []string) {
 	sort.Strings(keys)
 
 	// print out keys in columnar form in alphabetic order
@@ -241,6 +244,7 @@ func decryptAndDisplayCodes(filters ...string) {
 		// pbcopy`
 		fmt.Fprintf(os.Stderr, "%s\t", keys[0])
 		fmt.Printf(codes[keys[0]])
+        fmt.Fprintf(os.Stderr, "\n")
 	}
 	writer.Flush()
 }
