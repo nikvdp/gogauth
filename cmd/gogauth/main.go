@@ -67,10 +67,10 @@ func runCliParser() {
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "copy",
-		Short: "Copy an auth code to the clipboard. Args: (name)",
+		Short: "Copy an auth code to the clipboard. Args: (filter tokens)",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			copyCodeToClipboard(args[0])
+			copyCodeToClipboard(args...)
 		},
 	})
 
