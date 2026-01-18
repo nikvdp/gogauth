@@ -264,15 +264,17 @@ func copyCodeToClipboard(filters ...string) {
 		os.Exit(1)
 	}
 	sort.Strings(keys)
+	code := codes[keys[0]]
 	if len(codes) > 1 {
-		fmt.Fprintf(os.Stderr, "Multiple keys found, copying first match '%s':\n", keys[0])
+		fmt.Fprintln(os.Stderr, "Multiple keys found:")
 		for _, key := range keys {
 			fmt.Fprintf(os.Stderr, "  %s\n", key)
 		}
+		fmt.Fprintf(os.Stderr, "Copying first match '%s' (%s)\n", keys[0], code)
+	} else {
+		fmt.Fprintf(os.Stderr, "Copied '%s' for '%s'\n", code, keys[0])
 	}
-	code := codes[keys[0]]
 	clipboard.WriteAll(code)
-	fmt.Fprintf(os.Stderr, "Copied code '%s' for '%s' to clipboard\n", code, keys[0])
 }
 
 func displayCodes(codes map[string]string, keys []string) {
