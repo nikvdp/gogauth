@@ -249,9 +249,12 @@ func copyCodeToClipboard(filters ...string) {
 		fmt.Fprintln(os.Stderr, "No keys found")
 		os.Exit(1)
 	}
+	sort.Strings(keys)
 	if len(codes) > 1 {
-		fmt.Fprintln(os.Stderr, "More than one key found, not copying any keys!")
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "Multiple keys found, copying first match '%s':\n", keys[0])
+		for _, key := range keys {
+			fmt.Fprintf(os.Stderr, "  %s\n", key)
+		}
 	}
 	code := codes[keys[0]]
 	clipboard.WriteAll(code)
