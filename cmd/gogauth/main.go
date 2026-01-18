@@ -203,6 +203,17 @@ func grepFilter(array []string, filter string) []string {
 	return output
 }
 
+// parseFilterTokens splits filter arguments on spaces to get individual tokens
+// e.g. ["b uff", "foo"] -> ["b", "uff", "foo"]
+func parseFilterTokens(filters []string) []string {
+	var tokens []string
+	for _, filter := range filters {
+		parts := strings.Fields(filter)
+		tokens = append(tokens, parts...)
+	}
+	return tokens
+}
+
 func decryptCodes(filters ...string) (codes map[string]string, keys []string) {
 	decryptedKeys, err := doDecrypt()
 	if err != nil {
@@ -223,9 +234,12 @@ func decryptCodes(filters ...string) (codes map[string]string, keys []string) {
 		codes[key] = code
 		keys = append(keys, key)
 	}
-	for _, filter := range filters {
+
+	// Multi-pass filtering: each token progressively narrows down candidates
+	tokens := parseFilterTokens(filters)
+	for _, token := range tokens {
 		for key := range codes {
-			if !strings.Contains(key, filter) {
+			if !strings.Contains(strings.ToLower(key), strings.ToLower(token)) {
 				delete(codes, key)
 			}
 		}
